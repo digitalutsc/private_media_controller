@@ -1,0 +1,19 @@
+<?php
+
+/**
+ * @file
+ * Adds support for serializing entities to JSON-LD / Islandora Project.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function private_media_controller_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.hal':
+      $output = '';
+      return $output;
+  }
+}
