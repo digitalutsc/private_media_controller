@@ -7,6 +7,9 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Drupal\media\MediaInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Drupal\Core\Url;
+use Drupal\node\Entity\Node;
+use Drupal\views\Views;
+use Drupal\media\Entity\Media;
 
 class JWTTokenController extends ControllerBase {
   public function getToken() {
@@ -23,7 +26,7 @@ class JWTTokenController extends ControllerBase {
     return new JsonResponse($data);
   }
 
-  function serveMedia(MediaInterface $media) { 
+  public function serveMedia(MediaInterface $media, $token) { 
     
     if ($media->hasField('field_media_document') && !$media->get('field_media_document')->isEmpty()) {
        $file = $media->get('field_media_document')->entity;
@@ -75,7 +78,51 @@ class JWTTokenController extends ControllerBase {
     }
   }
 
-  function serveMedia($token) {
-    
+  public function accessGrant(String $token) {
+    // suppose to be name+email+nid+expired_time
+    $token = base64_decode($token);
+    $parts = split("+", $token);
+    $name = $parts[0];
+    $email = $parts[1];
+    $nid = $parts[2];
+    $expired = $parts[3];
+
+    $condtion = true; 
+    if ($condition) { 
+      $config = \Drupal::configFactory()->getEditable('system.performance');
+      $config->set('cache.page.max_age', 300);
+      $config->save();
+      
+      $jwtService = \Drupal::service('jwt.authentication.jwt');
+      $access_token = $jwtService->generateToken();
+
+      // Load the view by its machine name
+      $view = Views::getView('media_to_request_access');
+
+      if ($view) {
+          // Set the display ID (e.g., 'default' or any other display ID)
+          $view->setDisplay('default');
+
+          // Set the contextual filters
+          // Assuming you have one contextual filter, replace 'contextual_value' with your actual value
+          $view->setArguments($nid);
+
+          // Execute the view
+          $view->execute();
+
+          // Get the rendered output
+          $rendered_output = $view->render();
+
+          // If you need the result set
+          $mid = $view->result;
+
+          // Load the media entity
+          $media = Media::load($mid);
+
+          $this->serveMedia($media, $access_token);
+      } else {
+          // Handle the case where the view is not found
+      }
+    }   
   }
 }
