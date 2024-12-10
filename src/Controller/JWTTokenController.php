@@ -10,9 +10,13 @@ use Drupal\Core\Url;
 
 class JWTTokenController extends ControllerBase {
   public function getToken() {
-
+    $config = \Drupal::configFactory()->getEditable('system.performance');
+    $config->set('cache.page.max_age', 300);
+    $config->save();
+    
     $jwtService = \Drupal::service('jwt.authentication.jwt');
     $token = $jwtService->generateToken();
+
     $data = [
         'jwt-token' => $token
     ];
@@ -20,18 +24,14 @@ class JWTTokenController extends ControllerBase {
   }
 
   function serveMedia(MediaInterface $media) { 
+    
     if ($media->hasField('field_media_document') && !$media->get('field_media_document')->isEmpty()) {
        $file = $media->get('field_media_document')->entity;
        if ($file) {
         $file_uri = \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri());
        }
     }
-    /*print($file_uri);
-    $data = [
-       'file' => $file_uri,
-       'token' => $_GET['token']
-    ];
-    return new JsonResponse($data);*/
+
     $curl = curl_init();
 
     curl_setopt_array($curl, array(
@@ -73,5 +73,9 @@ class JWTTokenController extends ControllerBase {
         echo 'Invalid request';
         exit;
     }
+  }
+
+  function serveMedia($token) {
+    
   }
 }
