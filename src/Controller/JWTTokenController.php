@@ -47,14 +47,15 @@ class JWTTokenController extends ControllerBase {
       CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
       CURLOPT_CUSTOMREQUEST => 'GET',
       CURLOPT_HTTPHEADER => array(
-        'Authorization: Bearer '. $_GET['token']
+        'Authorization: Bearer '. $token
       ),
     ));
 
     $response = curl_exec($curl);
     $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    print ($http_code);
+
     curl_close($curl);
+
     if ($http_code === 200) {
         $filename = basename($file_uri);
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -81,20 +82,20 @@ class JWTTokenController extends ControllerBase {
   public function accessGrant(String $token) {
     // suppose to be name+email+nid+expired_time
     $token = base64_decode($token);
-    $parts = split("+", $token);
+    $parts = explode("+", $token);
     $name = $parts[0];
     $email = $parts[1];
     $nid = $parts[2];
     $expired = $parts[3];
 
-    $condtion = true; 
-    if ($condition) { 
+    // TODO:  need to query Webform submission and validate $name, and email ....
+    if (time() < $expired) { 
       $config = \Drupal::configFactory()->getEditable('system.performance');
       $config->set('cache.page.max_age', 300);
       $config->save();
       
       $jwtService = \Drupal::service('jwt.authentication.jwt');
-      $access_token = $jwtService->generateToken();
+      $jwt_token = $jwtService->generateToken();
 
       // Load the view by its machine name
       $view = Views::getView('media_to_request_access');
@@ -105,7 +106,7 @@ class JWTTokenController extends ControllerBase {
 
           // Set the contextual filters
           // Assuming you have one contextual filter, replace 'contextual_value' with your actual value
-          $view->setArguments($nid);
+          $view->setArguments([$nid]);
 
           // Execute the view
           $view->execute();
@@ -114,12 +115,14 @@ class JWTTokenController extends ControllerBase {
           $rendered_output = $view->render();
 
           // If you need the result set
-          $mid = $view->result;
+          $mid = $view->result[0]->mid;
 
+          drupal_log(json_encode($mid));
+          
           // Load the media entity
           $media = Media::load($mid);
 
-          $this->serveMedia($media, $access_token);
+          $this->serveMedia($media, $jwt_token);
       } else {
           // Handle the case where the view is not found
       }
