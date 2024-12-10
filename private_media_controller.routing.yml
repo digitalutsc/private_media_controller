@@ -1,10 +1,10 @@
-#private_media_controller.jwt_token_controller:
-#  path: '/request-access/jwt-token'
-#  defaults:
-#    _controller: '\Drupal\private_media_controller\Controller\JWTTokenController::getToken'
-#    _title: 'Generate JWT Token'
-#  requirements:
-#    _access: 'TRUE'
+private_media_controller.jwt_token_controller:
+  path: '/request-access/jwt-token'
+  defaults:
+    _controller: '\Drupal\private_media_controller\Controller\JWTTokenController::getToken'
+    _title: 'Generate JWT Token'
+  requirements:
+    _access: 'TRUE'
 # private_media_controller.serve_media_controller:
 #   path: '/request-access/media/{media}'
 #   defaults:
@@ -13,7 +13,7 @@
 #   requirements:
 #     _access: 'TRUE'
 private_media_controller.access_grant_controller:
-  path: '/request-access/{token}'
+  path: '/request-access/{token}/{nodeinfo}/{submitted}'
   defaults:
     _controller: '\Drupal\private_media_controller\Controller\JWTTokenController::accessGrant'
     _title: 'Serve the access media'

@@ -1,3 +1,4 @@
+
 <?php 
 
 namespace Drupal\private_media_controller\Controller;
@@ -10,6 +11,7 @@ use Drupal\Core\Url;
 use Drupal\node\Entity\Node;
 use Drupal\views\Views;
 use Drupal\media\Entity\Media;
+use Drupal\webform\Entity\WebformSubmission;
 
 class JWTTokenController extends ControllerBase {
   public function getToken() {
@@ -79,17 +81,68 @@ class JWTTokenController extends ControllerBase {
     }
   }
 
-  public function accessGrant(String $token) {
-    // suppose to be name+email+nid+expired_time
-    $token = base64_decode($token);
-    $parts = explode("+", $token);
-    $name = $parts[0];
-    $email = $parts[1];
-    $nid = $parts[2];
-    $expired = $parts[3];
+  public function getMedias($nid) {
+    // Load the node
+    $node = Node::load($nid);
 
-    // TODO:  need to query Webform submission and validate $name, and email ....
-    if (time() < $expired) { 
+    if ($node) {
+        // Check if the node has the field_islandora_object_media field
+        if ($node->hasField('field_islandora_object_media') && !$node->get('field_islandora_object_media')->isEmpty()) {
+            // Get the media entity references
+            $media_references = $node->get('field_islandora_object_media')->referencedEntities();
+
+            // Iterate through the media references
+            foreach ($media_references as $media) {
+                if ($media instanceof Media) {
+                    $media_name = $media->getName();
+                    // Check if the media entity has the field_media_use field
+                    if ($media->hasField('field_media_use') && !$media->get('field_media_use')->isEmpty()) {
+                        // Get the referenced taxonomy term
+                        $term = $media->get('field_media_use')->entity;
+
+                        if ($term instanceof Term) {
+                            // Check if the term name is "Temporary Downloadable"
+                            if ($term->getName() === 'Temporary Downloadable') {
+                                return $media;
+                            } else {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return false; 
+                    }
+                }
+            }
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
+
+  }
+
+  public function accessGrant(String $token, String $nodeinfo, $submitted) {
+    $parts = explode(", ", $nodeinfo);
+    $nid = $parts[count($parts) - 1];
+    
+    // Load the webform submission by token
+    $submission = \Drupal::entityTypeManager()
+        ->getStorage('webform_submission')
+        ->loadByProperties(['token' => $token]);
+
+    // Since loadByProperties returns an array, get the first element
+    $submission = reset($submission);
+    drupal_log($submission->id());
+
+    // validate the link is still within 1 day 
+    $end_time = $submitted + (24 * 60 * 60);
+
+    $current_time = time();
+    if ($submission && ($current_time >= $submitted && $current_time <= $end_time)) {
+
       $config = \Drupal::configFactory()->getEditable('system.performance');
       $config->set('cache.page.max_age', 300);
       $config->save();
@@ -97,34 +150,15 @@ class JWTTokenController extends ControllerBase {
       $jwtService = \Drupal::service('jwt.authentication.jwt');
       $jwt_token = $jwtService->generateToken();
 
-      // Load the view by its machine name
-      $view = Views::getView('media_to_request_access');
+      $media = $this->getMedias($nid);
 
-      if ($view) {
-          // Set the display ID (e.g., 'default' or any other display ID)
-          $view->setDisplay('default');
-
-          // Set the contextual filters
-          // Assuming you have one contextual filter, replace 'contextual_value' with your actual value
-          $view->setArguments([$nid]);
-
-          // Execute the view
-          $view->execute();
-
-          // Get the rendered output
-          $rendered_output = $view->render();
-
-          // If you need the result set
-          $mid = $view->result[0]->mid;
-
-          drupal_log(json_encode($mid));
-          
-          // Load the media entity
-          $media = Media::load($mid);
-
-          $this->serveMedia($media, $jwt_token);
-      } else {
-          // Handle the case where the view is not found
+      if ($media) {
+        $this->serveMedia($media, $jwt_token);
+      }
+      else {
+        header('HTTP/1.1 403 Forbidden');
+        echo 'Access forbidden';
+        exit;
       }
     }   
   }
