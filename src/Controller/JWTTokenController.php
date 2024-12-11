@@ -17,50 +17,58 @@ use Drupal\jwt\JsonWebToken\JsonWebToken;
 
 class JWTTokenController extends ControllerBase {
 
-
+  /**
+   * Login with service account
+   */
   function programmatically_login_user($user_id) {
-      // Load the user entity.
-      $user = User::load($user_id);
+    // Load the user entity.
+    $user = User::load($user_id);
 
-      if ($user) {
-        // Get the current request.
-        $request = \Drupal::requestStack()->getCurrentRequest();
-
-        // Log in the user.
-        user_login_finalize($user);
-
-        // Set the session for the user.
-        \Drupal::service('session_manager')->start();
-        \Drupal::service('current_user')->setAccount($user);
-
-        // Set the user in the request.
-        $request->attributes->set('user', $user);
-
-        return $user;
-      } else {
-      }
-    }
-
-    function programmatically_logout_user() {
+    if ($user) {
       // Get the current request.
       $request = \Drupal::requestStack()->getCurrentRequest();
 
-      // Log out the user.
-      user_logout();
+      // Log in the user.
+      user_login_finalize($user);
 
-      // Invalidate the session.
-      \Drupal::service('session_manager')->destroy();
+      // Set the session for the user.
+      \Drupal::service('session_manager')->start();
+      \Drupal::service('current_user')->setAccount($user);
 
-      // Clear the current user.
-      \Drupal::service('current_user')->setAccount(new \Drupal\Core\Session\AnonymousUserSession());
+      // Set the user in the request.
+      $request->attributes->set('user', $user);
 
-      // Clear the user from the request.
-      $request->attributes->remove('user');
-
+      return $user;
+    } else {
     }
+  }
 
+  /**
+   * Logout user
+   */
 
-  public function getToken() {
+  function programmatically_logout_user() {
+    // Get the current request.
+    $request = \Drupal::requestStack()->getCurrentRequest();
+
+    // Log out the user.
+    user_logout();
+
+    // Invalidate the session.
+    \Drupal::service('session_manager')->destroy();
+
+    // Clear the current user.
+    \Drupal::service('current_user')->setAccount(new \Drupal\Core\Session\AnonymousUserSession());
+
+    // Clear the user from the request.
+    $request->attributes->remove('user');
+
+  }
+
+    /**
+     * Generate JWT token with expiration
+     */
+  public function getJWTToken() {
     $account = $this->programmatically_login_user(1);
 
     $jwt = new JsonWebToken();
@@ -69,75 +77,25 @@ class JWTTokenController extends ControllerBase {
     $jwt->setClaim('exp', $now + 120);
     $jwt->setClaim(['drupal', 'uuid'], $account->uuid());  
     
+    /** @var \Drupal\Core\Authentication\AuthenticationProviderInterface $jwtService */
     $jwtService = \Drupal::service('jwt.authentication.jwt');
-    //$token = $jwtService->generateToken();
+    
     /** @var \Drupal\jwt\Transcoder\JwtTranscoderInterface $transcoder */
     $transcoder = \Drupal::service('jwt.transcoder');
+    
     $token = $transcoder->encode($jwt);
-
-    $data = [
-        'jwt-token' => $token
-    ];
     $this->programmatically_logout_user();
-    return new JsonResponse($data);
+    return $token;
+
+    /*$data = [
+      'jwt-token' => $token
+    ];
+    return new JsonResponse($data);*/
+    
   }
 
-  public function serveMedia1(MediaInterface $media) { 
-
-    if ($media->hasField('field_media_document') && !$media->get('field_media_document')->isEmpty()) {
-       $file = $media->get('field_media_document')->entity;
-       if ($file) {
-        $file_uri = \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri());
-       }
-    }
-
-    $curl = curl_init();
-
-    curl_setopt_array($curl, array(
-      CURLOPT_URL => $file_uri,
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_ENCODING => '',
-      CURLOPT_MAXREDIRS => 10,
-      CURLOPT_TIMEOUT => 0,
-      CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_CUSTOMREQUEST => 'GET',
-      CURLOPT_HTTPHEADER => array(
-        'Authorization: Bearer '. $_GET['token']
-      ),
-    ));
-
-    $response = curl_exec($curl);
-    $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-
-    curl_close($curl);
-
-    if ($http_code === 200) {
-        $filename = basename($file_uri);
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Content-Type: application/octet-stream');
-        header('Content-Length: ' . strlen($response));
-        header('Connection: close');
-
-        echo $response;
-        exit;
-    }
-    else if ($http_code === 403) {
-        header('HTTP/1.1 403 Forbidden');
-        echo 'Access forbidden';
-        exit;
-    }
-    else {
-        // Set the response to 400 Bad Request
-        header('HTTP/1.1 400 Bad Request');
-        echo 'Invalid request';
-        exit;
-    }
-  }
   public function serveMedia(MediaInterface $media) { 
-
-    $jwtService = \Drupal::service('jwt.authentication.jwt');
-    $token = $jwtService->generateToken();
+    $jwt_token = $this->getJWTToken();
 
     if ($media->hasField('field_media_document') && !$media->get('field_media_document')->isEmpty()) {
        $file = $media->get('field_media_document')->entity;
@@ -157,7 +115,7 @@ class JWTTokenController extends ControllerBase {
       CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
       CURLOPT_CUSTOMREQUEST => 'GET',
       CURLOPT_HTTPHEADER => array(
-        'Authorization: Bearer '. $token
+        'Authorization: Bearer '. $jwt_token
       ),
     );
     drupal_log(json_encode($options));
@@ -191,6 +149,9 @@ class JWTTokenController extends ControllerBase {
     }
   }
 
+  /**
+   * Query the media based on Node
+   */
   public function getMedias($nid) {
     // Load the node
     $node = Node::load($nid);
@@ -231,7 +192,10 @@ class JWTTokenController extends ControllerBase {
 
   }
 
-  public function accessGrant(String $token, String $nodeinfo, $submitted) {
+  /**
+   * Check access control and grand temporary access
+   */
+  public function accessGrant(String $submission_token, String $nodeinfo) {
     $parts = explode(", ", $nodeinfo);
     $nid = $parts[count($parts) - 1];
     
@@ -242,15 +206,11 @@ class JWTTokenController extends ControllerBase {
 
     // Since loadByProperties returns an array, get the first element
     $submission = reset($submission);
-    drupal_log($submission->id());
-
-    // validate the link is still within 1 day 
-    $end_time = $submitted + (24 * 60 * 60);
 
     $current_time = time();
     if ($submission && ($current_time >= $submitted && $current_time <= $end_time)) {
       $media = $this->getMedias($nid);
-      drupal_log($media->id());
+
       if ($media) {
         $this->serveMedia($media);
       }
