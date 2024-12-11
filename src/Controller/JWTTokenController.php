@@ -208,7 +208,7 @@ class JWTTokenController extends ControllerBase {
     $submission = reset($submission);
 
     $current_time = time();
-    if ($submission && ($current_time >= $submitted && $current_time <= $end_time)) {
+    if ($submission) {
       $media = $this->getMedias($nid);
 
       if ($media) {
