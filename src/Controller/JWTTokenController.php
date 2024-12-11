@@ -195,7 +195,7 @@ class JWTTokenController extends ControllerBase {
   /**
    * Check access control and grand temporary access
    */
-  public function accessGrant(String $submission_token, String $nodeinfo) {
+  public function accessGrant(String $submission_token, String $nodeinfo, $submitted) {
     $parts = explode(", ", $nodeinfo);
     $nid = $parts[count($parts) - 1];
     
@@ -207,8 +207,11 @@ class JWTTokenController extends ControllerBase {
     // Since loadByProperties returns an array, get the first element
     $submission = reset($submission);
 
+    // validate the link is still within 1 day 
+    $end_time = $submitted + (24 * 60 * 60);
+
     $current_time = time();
-    if ($submission) {
+    if ($submission && ($current_time >= $submitted && $current_time <= $end_time)) {
       $media = $this->getMedias($nid);
 
       if ($media) {
