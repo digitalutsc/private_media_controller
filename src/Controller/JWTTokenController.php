@@ -202,7 +202,7 @@ class JWTTokenController extends ControllerBase {
     // Load the webform submission by token
     $submission = \Drupal::entityTypeManager()
         ->getStorage('webform_submission')
-        ->loadByProperties(['token' => $token]);
+        ->loadByProperties(['token' => $submission_token]);
 
     // Since loadByProperties returns an array, get the first element
     $submission = reset($submission);
