@@ -1,0 +1,7 @@
+private_media_temp_access.access_grant_controller:
+  path: '/request-access/{submission_token}/{nodeinfo}/{submitted}'
+  defaults:
+    _controller: '\Drupal\private_media_temp_access\Controller\JWTTokenController::accessGrant'
+    _title: 'Serve the access media'
+  requirements:
+    _access: 'TRUE'

@@ -1,6 +1,6 @@
 <?php 
 
-namespace Drupal\private_media_controller\Controller;
+namespace Drupal\private_media_temp_access\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -224,9 +224,21 @@ class JWTTokenController extends ControllerBase {
       }
     }   
     else {
-      header('HTTP/1.1 404 Not Found');
-      echo 'Page not found';
-      exit;
+      if (isset($submission)) { 
+        header('HTTP/1.1 404 Not Found');
+        echo 'Page not found';
+        exit;
+      }
+      else if ($current_time > $end_time) { 
+        header('HTTP/1.1 498 This link is expired');
+        echo 'Session has expired';
+        exit;
+      }
+      else {
+        header('HTTP/1.1 410 Gone');
+        echo 'This link is invalid or no longer exists.';
+        exit;
+      }
     }
   }
 }

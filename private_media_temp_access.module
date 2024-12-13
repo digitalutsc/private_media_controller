@@ -10,7 +10,7 @@ use Drupal\Core\Routing\RouteMatchInterface;
 /**
  * Implements hook_help().
  */
-function private_media_controller_help($route_name, RouteMatchInterface $route_match) {
+function private_media_temp_access_help($route_name, RouteMatchInterface $route_match) {
   switch ($route_name) {
     case 'help.page.hal':
       $output = '';
@@ -21,10 +21,8 @@ function private_media_controller_help($route_name, RouteMatchInterface $route_m
 /**
  * Implement hook_form_alter
  */
-function private_media_controller_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) : void {
+function private_media_temp_access_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) : void {
   if ($form_id === "webform_submission_request_access_node_33_add_form") {
-    \Drupal::logger('my_module')->error($form_id);
-    //print(json_encode($form));
     print_log($form["select_media_to_request"]);
   }
 }
