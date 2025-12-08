@@ -65,6 +65,34 @@ class JWTTokenController extends ControllerBase {
 
   }
 
+  public function getJWTTokenReponse() {
+    $account = $this->programmatically_login_user(1);
+
+    $jwt = new JsonWebToken();
+    $now = time();
+    $jwt->setClaim('iat', time());
+    $jwt->setClaim('exp', $now + 120);
+    $jwt->setClaim(['drupal', 'uuid'], $account->uuid());  
+    
+    /** @var \Drupal\Core\Authentication\AuthenticationProviderInterface $jwtService */
+    $jwtService = \Drupal::service('jwt.authentication.jwt');
+    
+    /** @var \Drupal\jwt\Transcoder\JwtTranscoderInterface $transcoder */
+    $transcoder = \Drupal::service('jwt.transcoder');
+    
+    $token = $transcoder->encode($jwt);
+    $this->programmatically_logout_user();
+    //return $token;
+
+    $data = [
+      'jwt-token' => $token
+    ];
+    //$data = [];
+    return new JsonResponse($data);
+    
+  }
+
+
     /**
      * Generate JWT token with expiration
      */
@@ -138,13 +166,13 @@ class JWTTokenController extends ControllerBase {
     }
     else if ($http_code === 403) {
         header('HTTP/1.1 403 Forbidden');
-        echo 'Access forbidden';
+        echo 'serveMedia: Access forbidden';
         exit;
     }
     else {
         // Set the response to 400 Bad Request
         header('HTTP/1.1 400 Bad Request');
-        echo 'Invalid request';
+        echo 'serveMedia: Invalid request';
         exit;
     }
   }
@@ -165,6 +193,7 @@ class JWTTokenController extends ControllerBase {
             // Iterate through the media references
             foreach ($media_references as $media) {
                 if ($media instanceof Media) {
+                    drupal_log($media->id());
                     $media_name = $media->getName();
                     // Check if the media entity has the field_media_use field
                     if ($media->hasField('field_media_use') && !$media->get('field_media_use')->isEmpty()) {
@@ -211,21 +240,25 @@ class JWTTokenController extends ControllerBase {
     $end_time = $submitted + (24 * 60 * 60);
 
     $current_time = time();
+    drupal_log("Node id: " . $nid);
+    drupal_log("endtime: " . $end_time);
+    drupal_log("Submission: ". get_class($submission));
+    drupal_log("Submitted: " . $submitted);
+    drupal_log("Current time: ". $current_time); 
     if ($submission && ($current_time >= $submitted && $current_time <= $end_time)) {
       $media = $this->getMedias($nid);
-
       if ($media) {
         $this->serveMedia($media);
       }
       else {
         header('HTTP/1.1 403 Forbidden');
-        echo 'Access forbidden';
+        echo 'accessGrant: Access forbidden';
         exit;
       }
     }   
     else {
       header('HTTP/1.1 404 Not Found');
-      echo 'Page not found';
+      echo 'accessGrant: Page not found';
       exit;
     }
   }
