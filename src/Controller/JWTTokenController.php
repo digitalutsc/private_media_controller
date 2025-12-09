@@ -24,47 +24,48 @@ class JWTTokenController extends ControllerBase {
    */
   public function getJWTTokenReponse(): JsonResponse {
     // 1. Define the service account User ID.
-	$service_account_uid = 1; // Replace with your actual service account user ID
+    $service_account_uid = 1; // Replace with your actual service account user ID
 
-	// 2. Load the user entity directly.
-	$account = User::load($service_account_uid);
+    // 2. Load the user entity directly.
+    $account = User::load($service_account_uid);
 
-	if (!$account) {
-	// Handle the case where the user doesn't exist.
-	return new JsonResponse(['error' => 'Service account not found.'], 404);
-	}
+    if (!$account) {
+      // Handle the case where the user doesn't exist.
+      return new JsonResponse(['error' => 'Service account not found.'], 404);
+    }
 
-	// 3. Get the necessary services.
-	/** @var \Drupal\jwt\Transcoder\JwtTranscoderInterface $transcoder */
-	$transcoder = \Drupal::service('jwt.transcoder');
+    // 3. Get the necessary services.
+    /** @var \Drupal\jwt\Transcoder\JwtTranscoderInterface $transcoder */
+    $transcoder = \Drupal::service('jwt.transcoder');
 
-	// 4. Create the claims array.
-	$now = time();
-	$claims = [
-	// Standard claims: Issued At (iat) and Expiration (exp).
-	'iat' => $now,
-	'exp' => $now + 120, // Token valid for 120 seconds (2 minutes).
+    // 4. Create the claims array.
+    $now = time();
+    $claims = [
+      // Standard claims: Issued At (iat) and Expiration (exp).
+      'iat' => $now,
+      'exp' => $now + 120, // Token valid for 120 seconds (2 minutes).
 
-	// Drupal-specific claim: User UUID. This is essential for authentication.
-	'drupal.uuid' => $account->uuid(),
-	];
+      // Drupal-specific claim: User UUID. This is essential for authentication.
+      'drupal.uuid' => $account->uuid(),
+    ];
 
-	// 5. Encode the claims into a token object and IMMEDIATELY cast it to a string.
-	$token_object = $transcoder->encode($claims);
+    // 5. Encode the claims into a token object and IMMEDIATELY cast it to a string.
+    $token_object = $transcoder->encode($claims);
 
-	// Cast the token object to a string. This avoids the need for the specific 'use' statement.
-	$token_string = (string) $token_object; 
+    // Cast the token object to a string. This avoids the need for the specific 'use' statement.
+    $token_string = (string) $token_object; 
 
-	// 6. Return the token in a JSON response.
-	$data = [
-	'jwt-token' => $token_string,
-	];
-
+    // 6. Return the token in a JSON response.
+    $data = [
+      'jwt-token' => $token_string,
+    ];
     return new JsonResponse($data);
   }
 
-	/** * Generates a JWT token for the service account user (UID 1) without * initiating an active login session. * * 
-	 @return string * The encoded JWT token string. */
+	/** 
+   * Generates a JWT token for the service account user (UID 1) without * initiating an active login session. 
+   * @return string * The encoded JWT token string. */
+
 	public function getJWTToken(): string {
 	  // 1. Load the user entity directly.
 	  $service_account_uid = 1;
