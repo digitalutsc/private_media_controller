@@ -14,6 +14,7 @@ use Drupal\taxonomy\Entity\Term;
 use Symfony\Component\HttpFoundation\Request;
 use Drupal\user\Entity\User;
 use Drupal\jwt\JsonWebToken\JsonWebToken;
+use Drupal\jwt\Transcoder\JwtTranscoderInterface;
 
 class JWTTokenController extends ControllerBase {
 
@@ -65,7 +66,53 @@ class JWTTokenController extends ControllerBase {
 
   }
 
-  public function getJWTTokenReponse() {
+
+  /**
+   * Generates a JWT token for a specific service account user ID without
+   * programmatically logging in or out.
+   */
+  public function getJWTTokenReponse(): JsonResponse {
+    // 1. Define the service account User ID.
+	$service_account_uid = 1; // Replace with your actual service account user ID
+
+	// 2. Load the user entity directly.
+	$account = User::load($service_account_uid);
+
+	if (!$account) {
+	// Handle the case where the user doesn't exist.
+	return new JsonResponse(['error' => 'Service account not found.'], 404);
+	}
+
+	// 3. Get the necessary services.
+	/** @var \Drupal\jwt\Transcoder\JwtTranscoderInterface $transcoder */
+	$transcoder = \Drupal::service('jwt.transcoder');
+
+	// 4. Create the claims array.
+	$now = time();
+	$claims = [
+	// Standard claims: Issued At (iat) and Expiration (exp).
+	'iat' => $now,
+	'exp' => $now + 120, // Token valid for 120 seconds (2 minutes).
+
+	// Drupal-specific claim: User UUID. This is essential for authentication.
+	'drupal.uuid' => $account->uuid(),
+	];
+
+	// 5. Encode the claims into a token object and IMMEDIATELY cast it to a string.
+	$token_object = $transcoder->encode($claims);
+
+	// Cast the token object to a string. This avoids the need for the specific 'use' statement.
+	$token_string = (string) $token_object; 
+
+	// 6. Return the token in a JSON response.
+	$data = [
+	'jwt-token' => $token_string,
+	];
+
+    return new JsonResponse($data);
+  }
+
+  public function getJWTTokenReponse_old() {
     $account = $this->programmatically_login_user(1);
 
     $jwt = new JsonWebToken();
@@ -93,10 +140,50 @@ class JWTTokenController extends ControllerBase {
   }
 
 
+	/** * Generates a JWT token for the service account user (UID 1) without * initiating an active login session. * * 
+	 @return string * The encoded JWT token string. */
+	public function getJWTToken(): string {
+	  // 1. Load the user entity directly.
+	  $service_account_uid = 1;
+	  $account = User::load($service_account_uid);
+
+	  if (!$account) {
+	    // Handle the case where the user is not found.
+	    return '';
+	  }
+
+	  // 2. Instantiate the Drupal JsonWebToken object.
+	  // This object implements JsonWebTokenInterface, which the transcoder expects.
+	  $jwt = new JsonWebToken();
+	  $now = time();
+
+	  // 3. Set the claims on the JsonWebToken object.
+	  $jwt->setClaim('iat', $now);
+	  $jwt->setClaim('exp', $now + 120);
+	  
+	  // The 'drupal.uuid' claim is set using the array notation for nested claims.
+	  $jwt->setClaim(['drupal', 'uuid'], $account->uuid()); 
+
+	  // 4. Get the JWT Transcoder service.
+	  /** @var JwtTranscoderInterface $transcoder */
+	  $transcoder = \Drupal::service('jwt.transcoder');
+
+	  // 5. Encode the JsonWebToken object.
+	  // The transcoder now receives the expected object type.
+	  $token_object = $transcoder->encode($jwt);
+	  
+	  // 6. Cast the token object to a string.
+	  $token = (string) $token_object;
+
+	  return $token;
+	}
+
+
+
     /**
      * Generate JWT token with expiration
      */
-  public function getJWTToken() {
+  public function getJWTToken_old() {
     $account = $this->programmatically_login_user(1);
 
     $jwt = new JsonWebToken();
@@ -146,11 +233,11 @@ class JWTTokenController extends ControllerBase {
         'Authorization: Bearer '. $jwt_token
       ),
     );
-    drupal_log(json_encode($options));
+    //drupal_log(json_encode($options));
     curl_setopt_array($curl, $options);
 
     $response = curl_exec($curl);
-    drupal_log(json_encode($response));
+    //drupal_log(json_encode($response));
     $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
     curl_close($curl);
@@ -237,28 +324,24 @@ class JWTTokenController extends ControllerBase {
     $submission = reset($submission);
 
     // validate the link is still within 1 day 
-    $end_time = $submitted + (24 * 60 * 60);
+    //$end_time = $submitted + (24 * 60 * 60);
+    $end_time = $submitted + (0.25 * 60 * 60);
 
     $current_time = time();
-    drupal_log("Node id: " . $nid);
-    drupal_log("endtime: " . $end_time);
-    drupal_log("Submission: ". get_class($submission));
-    drupal_log("Submitted: " . $submitted);
-    drupal_log("Current time: ". $current_time); 
     if ($submission && ($current_time >= $submitted && $current_time <= $end_time)) {
       $media = $this->getMedias($nid);
       if ($media) {
         $this->serveMedia($media);
       }
       else {
-        header('HTTP/1.1 403 Forbidden');
-        echo 'accessGrant: Access forbidden';
+        header('HTTP/1.1 404 Not found');
+        echo 'accessGrant: File is not found';
         exit;
       }
     }   
     else {
-      header('HTTP/1.1 404 Not Found');
-      echo 'accessGrant: Page not found';
+      header('HTTP/1.1 403 Forbidden');
+      echo 'accessGrant: Link is expired. Please send the request again.';
       exit;
     }
   }
