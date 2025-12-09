@@ -1,0 +1,21 @@
+temporary_downloadable_media.jwt_token_controller:
+  path: '/request-access/jwt-token'
+  defaults:
+    _controller: '\Drupal\temporary_downloadable_media\Controller\JWTTokenController::getJWTTokenReponse'
+    _title: 'Generate JWT Token'
+  requirements:
+    _access: 'TRUE'
+# temporary_downloadable_media.serve_media_controller:
+#    path: '/request-access/media/{media}'
+#    defaults:
+#      _controller: '\Drupal\temporary_downloadable_media\Controller\JWTTokenController::serveMedia1'
+#      _title: 'Generate JWT Token'
+#    requirements:
+#      _access: 'TRUE'
+temporary_downloadable_media.access_grant_controller:
+  path: '/request-access/{submission_token}/{nodeinfo}/{submitted}'
+  defaults:
+    _controller: '\Drupal\temporary_downloadable_media\Controller\JWTTokenController::accessGrant'
+    _title: 'Serve the access media'
+  requirements:
+    _access: 'TRUE'

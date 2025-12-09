@@ -1,0 +1,84 @@
+<?php
+
+/**
+ * @file
+ * Adds support for serializing entities to JSON-LD / Islandora Project.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\user\Entity\User;
+use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+
+/**
+ * Implements hook_help().
+ */
+function temporary_downloadable_media_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.hal':
+      $output = '';
+      return $output;
+  }
+}
+
+/**
+ * Implement hook_form_alter
+ */
+function temporary_downloadable_media_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) : void {
+  if ($form_id === "webform_submission_request_access_node_33_add_form") {
+    \Drupal::logger('my_module')->error($form_id);
+    //print(json_encode($form));
+    print_log($form["select_media_to_request"]);
+  }
+}
+
+if (!function_exists('print_log')) {
+
+  /**
+   * Logging in apache log.
+   */
+  function print_log($thing) {
+    error_log(print_r($thing, TRUE), 0);
+  }
+
+}
+
+/**
+ * Helper function to retrieve a list of active user names, keyed by user ID.
+ *
+ * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+ * The entity type manager service.
+ * @return array
+ * An associative array of users (uid => username) suitable for a #options array.
+ */
+function get_user_select_options(EntityTypeManagerInterface $entity_type_manager): array {
+  // 1. Get the user storage.
+  /** @var EntityStorageInterface $user_storage */
+  $user_storage = $entity_type_manager->getStorage('user');
+
+  // 2. Build the Entity Query.
+  $query = $user_storage->getQuery()
+    // Only get active users.
+    ->condition('status', 1)
+    // Exclude the anonymous user (UID 0).
+    ->condition('uid', 0, '>')
+    // Optionally: only get users with a specific role, e.g., 'editor'.
+    // ->condition('roles', 'editor')
+    // Get the user IDs.
+    ->execute();
+
+  // 3. Load the user entities (only the ones matching the query).
+  $users = $user_storage->loadMultiple($query);
+  
+  $options = [];
+  
+  // 4. Populate the options array.
+  // The key must be the User ID (uid) and the value is the display name.
+  foreach ($users as $uid => $user) {
+    // We use the account name from the user entity.
+    $options[$uid] = $user->getAccountName();
+  }
+
+  return $options;
+}
+ 
