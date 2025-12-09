@@ -1,6 +1,6 @@
 <?php 
 
-namespace Drupal\private_media_controller;
+namespace Drupal\temporary_downloadable_media;
 
 use Drupal\Core\Module\ModuleBase;
 
