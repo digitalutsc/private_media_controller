@@ -19,55 +19,6 @@ use Drupal\jwt\Transcoder\JwtTranscoderInterface;
 class JWTTokenController extends ControllerBase {
 
   /**
-   * Login with service account
-   */
-  function programmatically_login_user($user_id) {
-    // Load the user entity.
-    $user = User::load($user_id);
-
-    if ($user) {
-      // Get the current request.
-      $request = \Drupal::requestStack()->getCurrentRequest();
-
-      // Log in the user.
-      user_login_finalize($user);
-
-      // Set the session for the user.
-      \Drupal::service('session_manager')->start();
-      \Drupal::service('current_user')->setAccount($user);
-
-      // Set the user in the request.
-      $request->attributes->set('user', $user);
-
-      return $user;
-    } else {
-    }
-  }
-
-  /**
-   * Logout user
-   */
-
-  function programmatically_logout_user() {
-    // Get the current request.
-    $request = \Drupal::requestStack()->getCurrentRequest();
-
-    // Log out the user.
-    user_logout();
-
-    // Invalidate the session.
-    \Drupal::service('session_manager')->destroy();
-
-    // Clear the current user.
-    \Drupal::service('current_user')->setAccount(new \Drupal\Core\Session\AnonymousUserSession());
-
-    // Clear the user from the request.
-    $request->attributes->remove('user');
-
-  }
-
-
-  /**
    * Generates a JWT token for a specific service account user ID without
    * programmatically logging in or out.
    */
@@ -112,34 +63,6 @@ class JWTTokenController extends ControllerBase {
     return new JsonResponse($data);
   }
 
-  public function getJWTTokenReponse_old() {
-    $account = $this->programmatically_login_user(1);
-
-    $jwt = new JsonWebToken();
-    $now = time();
-    $jwt->setClaim('iat', time());
-    $jwt->setClaim('exp', $now + 120);
-    $jwt->setClaim(['drupal', 'uuid'], $account->uuid());  
-    
-    /** @var \Drupal\Core\Authentication\AuthenticationProviderInterface $jwtService */
-    $jwtService = \Drupal::service('jwt.authentication.jwt');
-    
-    /** @var \Drupal\jwt\Transcoder\JwtTranscoderInterface $transcoder */
-    $transcoder = \Drupal::service('jwt.transcoder');
-    
-    $token = $transcoder->encode($jwt);
-    $this->programmatically_logout_user();
-    //return $token;
-
-    $data = [
-      'jwt-token' => $token
-    ];
-    //$data = [];
-    return new JsonResponse($data);
-    
-  }
-
-
 	/** * Generates a JWT token for the service account user (UID 1) without * initiating an active login session. * * 
 	 @return string * The encoded JWT token string. */
 	public function getJWTToken(): string {
@@ -177,37 +100,6 @@ class JWTTokenController extends ControllerBase {
 
 	  return $token;
 	}
-
-
-
-    /**
-     * Generate JWT token with expiration
-     */
-  public function getJWTToken_old() {
-    $account = $this->programmatically_login_user(1);
-
-    $jwt = new JsonWebToken();
-    $now = time();
-    $jwt->setClaim('iat', time());
-    $jwt->setClaim('exp', $now + 120);
-    $jwt->setClaim(['drupal', 'uuid'], $account->uuid());  
-    
-    /** @var \Drupal\Core\Authentication\AuthenticationProviderInterface $jwtService */
-    $jwtService = \Drupal::service('jwt.authentication.jwt');
-    
-    /** @var \Drupal\jwt\Transcoder\JwtTranscoderInterface $transcoder */
-    $transcoder = \Drupal::service('jwt.transcoder');
-    
-    $token = $transcoder->encode($jwt);
-    $this->programmatically_logout_user();
-    return $token;
-
-    /*$data = [
-      'jwt-token' => $token
-    ];
-    return new JsonResponse($data);*/
-    
-  }
 
   public function serveMedia(MediaInterface $media) { 
     $jwt_token = $this->getJWTToken();
