@@ -1,6 +1,6 @@
 <?php 
 
-namespace Drupal\private_media_controller\Controller;
+namespace Drupal\temporary_downloadable_media\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Symfony\Component\HttpFoundation\JsonResponse;
