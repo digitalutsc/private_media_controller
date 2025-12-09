@@ -1,6 +1,6 @@
-islandora_mirador.settings:
+temporary_downloadable_media.settings:
   type: config_object
-  label: 'Mirador Settings'
+  label: 'Temporary Downloadable Media Settings'
   mapping:
     user_select:
       type: string
