@@ -8,7 +8,7 @@ temporary_downloadable_media.jwt_token_controller:
 temporary_downloadable_media.configform:
   path: '/admin/config/media/temporary_downloadable'
   defaults:
-    _form: '\Drupal\temporary_downloadable_media\Form\TemporaryAccessConfigForm'
+    _form: '\Drupal\temporary_downloadable_media\Form\TemporaryDownloadMediaConfigForm'
     _title: 'Temporary Downloadable Settings'
   requirements:
     _permission: 'administer site configuration'
