@@ -23,8 +23,10 @@ class JWTTokenController extends ControllerBase {
    * programmatically logging in or out.
    */
   public function getJWTTokenReponse(): JsonResponse {
+    $config = \Drupal::config('temporary_downloadable_media.settings');
+
     // 1. Define the service account User ID.
-    $service_account_uid = 1; // Replace with your actual service account user ID
+    $service_account_uid = $config->get("user_select"); // Replace with your actual service account user ID
 
     // 2. Load the user entity directly.
     $account = User::load($service_account_uid);
@@ -39,16 +41,18 @@ class JWTTokenController extends ControllerBase {
     $transcoder = \Drupal::service('jwt.transcoder');
 
     // 4. Create the claims array.
+    $expired_hours = $config->get("token_expired_duration");
     $now = time();
     $claims = [
       // Standard claims: Issued At (iat) and Expiration (exp).
       'iat' => $now,
-      'exp' => $now + 120, // Token valid for 120 seconds (2 minutes).
+      'exp' => $now + ($expired_hours * 60 * 60), // Token valid for 120 seconds (2 minutes).
 
       // Drupal-specific claim: User UUID. This is essential for authentication.
       'drupal.uuid' => $account->uuid(),
     ];
 
+    drupal_log("expired at " . ($now + ($expired_hours * 60 * 60)));
     // 5. Encode the claims into a token object and IMMEDIATELY cast it to a string.
     $token_object = $transcoder->encode($claims);
 
@@ -67,8 +71,10 @@ class JWTTokenController extends ControllerBase {
    * @return string * The encoded JWT token string. */
 
 	public function getJWTToken(): string {
+	  $config = \Drupal::config('temporary_downloadable_media.settings');
+
 	  // 1. Load the user entity directly.
-	  $service_account_uid = 1;
+	  $service_account_uid = $config->get("user_select");
 	  $account = User::load($service_account_uid);
 
 	  if (!$account) {
@@ -80,11 +86,13 @@ class JWTTokenController extends ControllerBase {
 	  // This object implements JsonWebTokenInterface, which the transcoder expects.
 	  $jwt = new JsonWebToken();
 	  $now = time();
-
+          $expired_hours = $config->get("token_expired_duration");
 	  // 3. Set the claims on the JsonWebToken object.
 	  $jwt->setClaim('iat', $now);
-	  $jwt->setClaim('exp', $now + 120);
-	  
+	  $jwt->setClaim('exp', ($now + $expired_hours * 60 * 60));
+
+	  drupal_log("expired at " . ($now + ($expired_hours * 60 * 60)));
+
 	  // The 'drupal.uuid' claim is set using the array notation for nested claims.
 	  $jwt->setClaim(['drupal', 'uuid'], $account->uuid()); 
 
@@ -205,6 +213,9 @@ class JWTTokenController extends ControllerBase {
    * Check access control and grand temporary access
    */
   public function accessGrant(String $submission_token, String $nodeinfo, $submitted) {
+    $config = \Drupal::config('temporary_downloadable_media.settings');
+    $expired_hours = $config->get("token_expired_duration");
+
     $parts = explode(", ", $nodeinfo);
     $nid = $parts[count($parts) - 1];
     
@@ -218,7 +229,7 @@ class JWTTokenController extends ControllerBase {
 
     // validate the link is still within 1 day 
     //$end_time = $submitted + (24 * 60 * 60);
-    $end_time = $submitted + (0.25 * 60 * 60);
+    $end_time = $submitted + ($expired_hours * 60 * 60);
 
     $current_time = time();
     if ($submission && ($current_time >= $submitted && $current_time <= $end_time)) {
@@ -228,13 +239,15 @@ class JWTTokenController extends ControllerBase {
       }
       else {
         header('HTTP/1.1 404 Not found');
-        echo 'accessGrant: File is not found';
+        //echo 'File is not found';
+	header("Location: https://ark.digital.utsc.utoronto.ca/404.php");
         exit;
       }
     }   
     else {
       header('HTTP/1.1 403 Forbidden');
-      echo 'accessGrant: Link is expired. Please send the request again.';
+      //echo 'Link is expired. Please send the request again.';
+      header("Location: https://ark.digital.utsc.utoronto.ca/403.php");
       exit;
     }
   }

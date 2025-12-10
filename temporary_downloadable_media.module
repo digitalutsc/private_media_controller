@@ -51,13 +51,14 @@ if (!function_exists('print_log')) {
  * @return array
  * An associative array of users (uid => username) suitable for a #options array.
  */
-function get_user_select_options(EntityTypeManagerInterface $entity_type_manager): array {
+function get_user_select_options(): array {
   // 1. Get the user storage.
   /** @var EntityStorageInterface $user_storage */
-  $user_storage = $entity_type_manager->getStorage('user');
+  $user_storage = \Drupal::entityTypeManager()->getStorage('user');
 
   // 2. Build the Entity Query.
   $query = $user_storage->getQuery()
+    ->accessCheck(FALSE)
     // Only get active users.
     ->condition('status', 1)
     // Exclude the anonymous user (UID 0).
