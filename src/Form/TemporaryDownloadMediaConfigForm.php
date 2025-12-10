@@ -8,7 +8,7 @@ use Drupal\Core\Form\FormStateInterface;
 /**
  * Mirador Settings Form.
  */
-class TemporaryAccessConfigForm extends ConfigFormBase {
+class TemporaryDownloadMediaConfigForm extends ConfigFormBase {
 
   /**
    * {@inheritdoc}
