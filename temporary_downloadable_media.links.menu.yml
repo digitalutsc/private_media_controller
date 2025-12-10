@@ -1,0 +1,5 @@
+temporary_downloadable_media.config:
+  title: "Temporary Downloadable Media"
+  description: "Configure the Temporary Downloadable Media settings."
+  parent: system.admin_config_media
+  route_name: temporary_downloadable_media.configform
