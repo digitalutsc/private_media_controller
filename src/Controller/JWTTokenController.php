@@ -46,13 +46,12 @@ class JWTTokenController extends ControllerBase {
     $claims = [
       // Standard claims: Issued At (iat) and Expiration (exp).
       'iat' => $now,
-      'exp' => $now + ($expired_hours * 60 * 60), // Token valid for 120 seconds (2 minutes).
+      'exp' => $now + 120, // Token valid for 120 seconds (2 minutes).
 
       // Drupal-specific claim: User UUID. This is essential for authentication.
       'drupal.uuid' => $account->uuid(),
     ];
 
-    drupal_log("expired at " . ($now + ($expired_hours * 60 * 60)));
     // 5. Encode the claims into a token object and IMMEDIATELY cast it to a string.
     $token_object = $transcoder->encode($claims);
 
@@ -89,9 +88,8 @@ class JWTTokenController extends ControllerBase {
           $expired_hours = $config->get("token_expired_duration");
 	  // 3. Set the claims on the JsonWebToken object.
 	  $jwt->setClaim('iat', $now);
-	  $jwt->setClaim('exp', ($now + $expired_hours * 60 * 60));
+	  $jwt->setClaim('exp', ($now + 120));
 
-	  drupal_log("expired at " . ($now + ($expired_hours * 60 * 60)));
 
 	  // The 'drupal.uuid' claim is set using the array notation for nested claims.
 	  $jwt->setClaim(['drupal', 'uuid'], $account->uuid()); 
@@ -119,7 +117,6 @@ class JWTTokenController extends ControllerBase {
         $file_uri = \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri());
        }
     }
-    print($file_uri);
     $curl = curl_init();
     $options = array(
       CURLOPT_URL => $file_uri,
@@ -228,7 +225,6 @@ class JWTTokenController extends ControllerBase {
     $submission = reset($submission);
 
     // validate the link is still within 1 day 
-    //$end_time = $submitted + (24 * 60 * 60);
     $end_time = $submitted + ($expired_hours * 60 * 60);
 
     $current_time = time();
@@ -239,14 +235,12 @@ class JWTTokenController extends ControllerBase {
       }
       else {
         header('HTTP/1.1 404 Not found');
-        //echo 'File is not found';
-	header("Location: https://ark.digital.utsc.utoronto.ca/404.php");
+	      header("Location: https://ark.digital.utsc.utoronto.ca/404.php");
         exit;
       }
     }   
     else {
       header('HTTP/1.1 403 Forbidden');
-      //echo 'Link is expired. Please send the request again.';
       header("Location: https://ark.digital.utsc.utoronto.ca/403.php");
       exit;
     }

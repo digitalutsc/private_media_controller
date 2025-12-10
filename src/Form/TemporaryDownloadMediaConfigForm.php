@@ -37,7 +37,7 @@ class TemporaryDownloadMediaConfigForm extends ConfigFormBase {
     // 1. Create the select list element.
     $form['temporary_downloadable_media_fieldset']['user_select'] = [
       '#type' => 'select',
-      '#title' => $this->t('Select User to generate a valid token'),
+      '#title' => $this->t('Select User to grant temporary access: '),
       '#options' => $user_options,
       '#required' => TRUE,
       '#description' => $this->t('A list of all active users on the site.'),
@@ -46,8 +46,8 @@ class TemporaryDownloadMediaConfigForm extends ConfigFormBase {
 
     $form['temporary_downloadable_media_fieldset']['token_expired_duration'] = [
       '#type' => 'textfield',
-      '#title' => $this->t('Enter number of hours before token expired'),
-      '#description' => $this->t('In hours(s) determine how long the token is valid'),
+      '#title' => $this->t('Enter number of hours before the temporary access is expired:'),
+      '#description' => $this->t('In hours(s) determine how long the temporary access is valid, default is 24 hours (1 day)'),
       '#default_value' => ($config->get("token_expired_duration") !== NULL) ? $config->get("token_expired_duration") : 24,
       '#required' => TRUE,
     ];
